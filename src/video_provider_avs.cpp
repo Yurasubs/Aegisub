@@ -38,6 +38,7 @@
 #include <libaegisub/fs.h>
 #include <libaegisub/log.h>
 #include <libaegisub/path.h>
+#include <libaegisub/make_unique.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <mutex>
@@ -67,10 +68,10 @@ class AvisynthVideoProvider: public VideoProvider {
 	VideoInfo vi;
 
 	AVSValue Open(agi::fs::path const& filename);
-	void Init(std::string_view matrix);
+	void Init(std::string const& matrix);
 
 public:
-	AvisynthVideoProvider(agi::fs::path const& filename, std::string_view colormatrix);
+	AvisynthVideoProvider(agi::fs::path const& filename, std::string const& colormatrix);
 
 	void GetFrame(int n, VideoFrame &frame) override;
 
@@ -92,9 +93,7 @@ public:
 	bool HasAudio() const override                 { return has_audio; }
 };
 
-AvisynthVideoProvider::AvisynthVideoProvider(agi::fs::path const& filename, std::string_view colormatrix) {
-	agi::acs::CheckFileRead(filename);
-
+AvisynthVideoProvider::AvisynthVideoProvider(agi::fs::path const& filename, std::string const& colormatrix) try {
 	std::lock_guard<std::mutex> lock(avs.GetMutex());
 
 #ifdef _WIN32
@@ -181,8 +180,11 @@ file_exit:
 		throw VideoOpenError("Avisynth error: " + std::string(err.msg));
 	}
 }
+catch (AvisynthError const& err) {
+	throw VideoProviderError("Avisynth error: " + std::string(err.msg));
+}
 
-void AvisynthVideoProvider::Init(std::string_view colormatrix) {
+void AvisynthVideoProvider::Init(std::string const& colormatrix) {
 	auto script = source_clip;
 	vi = script.AsClip()->GetVideoInfo();
 	has_audio = vi.HasAudio();
@@ -321,7 +323,7 @@ void AvisynthVideoProvider::GetFrame(int n, VideoFrame &out) {
 }
 
 namespace agi { class BackgroundRunner; }
-std::unique_ptr<VideoProvider> CreateAvisynthVideoProvider(agi::fs::path const& path, std::string_view colormatrix, agi::BackgroundRunner *) {
-	return std::make_unique<AvisynthVideoProvider>(path, colormatrix);
+std::unique_ptr<VideoProvider> CreateAvisynthVideoProvider(agi::fs::path const& path, std::string const& colormatrix, agi::BackgroundRunner *) {
+	return agi::make_unique<AvisynthVideoProvider>(path, colormatrix);
 }
-#endif // WITH_AVISYNTH
+#endif // HAVE_AVISYNTH
