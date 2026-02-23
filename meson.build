@@ -85,6 +85,7 @@ if get_option('enable_update_checker')
 endif
 
 deps = []
+deps_inc = []
 
 if host_machine.system() == 'darwin'
     add_languages('objc', 'objcpp')
@@ -270,8 +271,47 @@ foreach dep: check_deps
     endif
 endforeach
 
-if host_machine.system() == 'windows' and get_option('avisynth').enabled()
+needs_ffmpeg = false
+
+if get_option('bestsource').enabled()
+    conf.set('WITH_BESTSOURCE', 1)
+    deps += dependency('bestsource', version: '>=6.0',
+                       fallback: ['bestsource', 'bestsource_dep'],
+                       default_options: ['enable_plugin=false'])
+    dep_avail += 'BestSource'
+    needs_ffmpeg = true
+endif
+
+if needs_ffmpeg
+    conf.set('WITH_FFMPEG', 1)
+    deps += [
+      dependency('libavutil', default_options: ['tests=disabled']),
+      dependency('libswscale', default_options: ['tests=disabled']),
+    ]
+endif
+
+if get_option('avisynth').enabled()
     conf.set('WITH_AVISYNTH', 1) # bundled separately with installer
+    dep_avail += 'AviSynth'
+
+    avs_opt = cmake.subproject_options()
+    avs_opt.add_cmake_defines({
+        'HEADERS_ONLY': true
+    })
+
+    avs = cmake.subproject('avisynth', options: avs_opt)
+    deps_inc += avs.include_directories('AviSynth-Headers')
+
+    if host_machine.system() == 'windows'
+      deps += cc.find_library('avifil32', required: true)
+    endif
+endif
+
+if get_option('vapoursynth').enabled()
+    conf.set('WITH_VAPOURSYNTH', 1)
+    vs_sub = subproject('vapoursynth')
+    deps_inc += vs_sub.get_variable('vs_inc')
+    dep_avail += 'VapourSynth'
 endif
 
 if host_machine.system() == 'windows' and not get_option('directsound').disabled()
@@ -460,7 +500,7 @@ aegisub = executable('aegisub', aegisub_src, version_h, resrc, aegisub_order_dep
                      link_with: [libresrc, libaegisub],
                      link_args: link_args,
                      link_depends: link_depends,
-                     include_directories: [libaegisub_inc, libresrc_inc, version_inc, include_directories('src')],
+                     include_directories: [libaegisub_inc, libresrc_inc, version_inc, deps_inc, include_directories('src')],
                      cpp_pch: aegisub_cpp_pch,
                      c_pch: aegisub_c_pch,
                      install: true,

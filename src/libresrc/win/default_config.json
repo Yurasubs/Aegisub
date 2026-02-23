@@ -1,8 +1,8 @@
 {
-	"Audio" : {
-		"Player" : "DirectSound"
+	"Audio": {
+		"Player": "DirectSound"
 	},
-	"Subtitle" : {
-		"Provider" : "CSRI/pf-xy-vsfilter_textsub"
+	"Subtitle": {
+		"Provider": "libass"
 	}
 }

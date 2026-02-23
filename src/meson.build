@@ -171,10 +171,8 @@ if host_machine.system() == 'darwin'
     )
 elif host_machine.system() == 'windows'
     aegisub_src += files(
-        'avisynth_wrap.cpp',
         'crash_writer_minidump.cpp',
         'font_file_lister_gdi.cpp',
-        'video_provider_avs.cpp',
     )
 
     if cc.has_header('wingdi.h')
@@ -243,6 +241,18 @@ opt_src = [
     ['FFMS2', ['audio_provider_ffmpegsource.cpp',
                'video_provider_ffmpegsource.cpp',
                'ffmpegsource_common.cpp']],
+
+    ['BestSource', ['audio_provider_bestsource.cpp',
+                    'video_provider_bestsource.cpp',
+                    'bestsource_common.cpp']],
+    ['VapourSynth', ['vapoursynth_wrap.cpp',
+                     'vapoursynth_common.cpp',
+                     'audio_provider_vs.cpp',
+                     'video_provider_vs.cpp']],
+
+    ['AviSynth', ['avisynth_wrap.cpp',
+                  'audio_provider_avs.cpp',
+                  'video_provider_avs.cpp']],
 
     ['Hunspell', 'spellchecker_hunspell.cpp'],
 
