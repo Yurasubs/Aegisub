@@ -392,6 +392,60 @@ public:
 	}
 };
 
+class GridColumnCPL final : public GridColumn {
+	const agi::OptionValue *ignore_whitespace = OPT_GET("Subtitle/Character Counter/Ignore Whitespace");
+	const agi::OptionValue *ignore_punctuation = OPT_GET("Subtitle/Character Counter/Ignore Punctuation");
+	const agi::OptionValue *char_limit = OPT_GET("Subtitle/Character Limit");
+	const agi::OptionValue *bg_color = OPT_GET("Colour/Subtitle Grid/CPS Error");
+
+public:
+	COLUMN_HEADER(_("CPL"))
+	COLUMN_DESCRIPTION(_("Characters Per Line"))
+	bool Centered() const override { return true; }
+	bool RefreshOnTextChange() const override { return true; }
+
+	wxString Value(const AssDialogue *, const agi::Context *) const override {
+		return wxS("");
+	}
+
+	int CPL(const AssDialogue *d) const {
+		auto const& text = d->Text.get();
+
+		int ignore = agi::IGNORE_BLOCKS;
+		if (ignore_whitespace->GetBool())
+			ignore |= agi::IGNORE_WHITESPACE;
+		if (ignore_punctuation->GetBool())
+			ignore |= agi::IGNORE_PUNCTUATION;
+
+		return agi::MaxLineLength(text, ignore);
+	}
+
+	int Width(const agi::Context *, WidthHelper &helper) const override {
+		return helper(wxS("999"));
+	}
+
+	void Paint(wxDC &dc, int x, int y, const AssDialogue *d, const agi::Context *) const override {
+		int cpl = CPL(d);
+		if (cpl < 0) return;
+
+		wxString str = std::to_wstring(cpl);
+		wxSize ext = dc.GetTextExtent(str);
+		auto tc = dc.GetTextForeground();
+
+		int limit = char_limit->GetInt();
+		if (limit > 0 && cpl > limit) {
+			dc.SetBrush(wxBrush(to_wx(bg_color->GetColor())));
+			dc.SetPen(*wxTRANSPARENT_PEN);
+			dc.DrawRectangle(x, y + 1, width, ext.GetHeight() + 3);
+			dc.SetTextForeground(blend(*wxBLACK, tc, 1.0));
+		}
+
+		x += (width + 2 - ext.GetWidth()) / 2;
+		dc.DrawText(str, x, y + 2);
+		dc.SetTextForeground(tc);
+	}
+};
+
 class GridColumnText final : public GridColumn {
 	const agi::OptionValue *override_mode;
 	wxString replace_char;
@@ -462,6 +516,7 @@ std::vector<std::unique_ptr<GridColumn>> GetGridColumns() {
 	ret.push_back(make<GridColumnStartTime>());
 	ret.push_back(make<GridColumnEndTime>());
 	ret.push_back(make<GridColumnCPS>());
+	ret.push_back(make<GridColumnCPL>());
 	ret.push_back(make<GridColumnStyle>());
 	ret.push_back(make<GridColumnActor>());
 	ret.push_back(make<GridColumnEffect>());
